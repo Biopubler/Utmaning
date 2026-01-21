@@ -1,0 +1,186 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO multicontrol example</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages li { padding: 5px 10px; }
+      #messages li:nth-child(odd) { background: #eee; }
+	  @media (max-width: 767px) {
+        #messages {
+         display: none;
+		}
+	}
+    </style>
+  </head>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+<script>
+var touchdown = false; // for mobile clients
+var playerNbr = -2;
+var nbrPlayers;
+
+$(function () {
+    var socket = io();
+	socket.on('chat message', function(msg){
+      $('#messages').append($('<li>').text(msg));
+    });
+
+	window.addEventListener('keydown', function (e) {
+		e.preventDefault();
+		if (playerNbr < 0) {
+			return;
+		}
+		nbr = e.keyCode;
+		if (nbr == 32 || nbr == 37 || nbr == 38 ||nbr ==39 || nbr == 40) {
+			socket.emit('button pressed', nbr, playerNbr);
+		}
+	});
+});
+
+var gamePieces;
+var socket = io();
+var canvassize;
+
+function startGame() {
+    socket.emit('control request');
+    socket.emit('get canvassize');
+}
+
+socket.on('canvas size', function(size, coords, nbr) {
+	canvassize = size;
+	nbrPlayers = nbr;
+	gamePieces = [];
+	var colors = ['#FF0000', '#0000FF', '#00FF00', '#FFFF00', '#FF00FF', '#00FFFF', '#000000'];
+	for (var i = 0; i < nbrPlayers; i++) {
+		gamePieces.push(new component(30, 30, colors[i%colors.length], coords[i].x, coords[i].y));
+	}
+	myGameArea.start();
+});
+
+socket.on('request response', function(nbr) {
+	if (playerNbr < -1) {
+		playerNbr = nbr;
+	}
+      $('#messages').append($('<li>').text('you are player nbr ' + nbr));
+
+});
+
+socket.on('check connection', function() {
+	socket.emit('confirm connection', playerNbr);
+});
+
+socket.on('new pos', function(pos){
+	for (var i = 0; i < nbrPlayers; i++) {
+		gamePieces[i].newPosFromServer(pos[i]);
+	}
+});
+
+var myGameArea = {
+    canvas : document.createElement("canvas"),
+    start : function() {
+		this.canvas.width = canvassize.width;
+        this.canvas.height = canvassize.height;
+		this.canvas.style="border:1px solid #000000;";
+		this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        this.frameNo = 0;
+        this.interval = setInterval(updateGameArea, 20);
+		this.canvas.addEventListener("touchstart", handleTouch, false); // for mobile clients
+		this.canvas.addEventListener("touchend", unhandleTouch, false); // for mobile clients
+		
+    },
+    stop : function() {
+        clearInterval(this.interval);
+    },
+    clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+}
+
+function handleTouch(evt) { // for mobile clients
+	evt.preventDefault();
+	if (playerNbr < 1) {
+		return;
+	}
+	touchdown = true;
+	var x = evt.touches[0].clientX;
+	var y = evt.touches[0].clientY;
+	var xPos = gamePieces[playerNbr].x;
+	var yPos = gamePieces[playerNbr].y;
+	var xDiff = Math.abs(x-xPos);
+	var yDiff = Math.abs(y-yPos);
+	var keyNbr = 40; // down
+	if (xDiff > yDiff) { // horizontal movement
+		if (x < xPos) {
+			keyNbr = 37; // left
+		}
+		else {
+			keyNbr = 39; // right
+		}
+	}
+	else { // vertical movement
+		if (y < yPos) {
+			keyNbr = 38; // up
+		}
+	}
+	
+	myInterval = setInterval(function() {
+	if (touchdown) {
+		socket.emit('button pressed', keyNbr, playerNbr);
+	}
+		var reachedTouchingPoint = (keyNbr == 40 && y <= gamePieces[playerNbr].y) || 
+			(keyNbr == 37 && x >= gamePieces[playerNbr].x) ||
+			(keyNbr == 39 && x <= gamePieces[playerNbr].x) ||
+			(keyNbr == 38 && y >= gamePieces[playerNbr].y);
+		if (!touchdown || reachedTouchingPoint) { // until touchend or reached the point of touch
+			clearInterval(myInterval);
+		}
+	}, 10);
+	
+}
+
+function unhandleTouch(evt) { // for mobile clients
+	touchdown = false;
+}
+
+function component(width, height, color, x, y, type) {
+
+    this.type = type;
+    this.width = width;
+    this.height = height;
+    this.x = x;
+    this.y = y;    
+    this.update = function() {
+        ctx = myGameArea.context;
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.fillStyle = color;
+        ctx.fillRect(this.width / -2, this.height / -2, this.width, this.height);
+        ctx.restore();    
+    }
+	this.newPosFromServer = function(pos) {
+		this.x = pos.x;
+		this.y = pos.y;
+	}
+	
+}
+
+function updateGameArea() {
+    myGameArea.clear();
+	for (var i = 0; i < nbrPlayers; i++) {
+		gamePieces[i].update();
+	}
+}
+  </script>
+  <body onload="startGame()">
+
+  <ul id="messages"></ul>
+
+  </body>
+</html>
