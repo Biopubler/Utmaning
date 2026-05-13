@@ -1,0 +1,39 @@
+body {
+  margin: 0;
+  background: #f5d800;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bild-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.bakgrund-bild {
+  width: 420px;
+  display: block;
+  border-radius: 50px;
+}
+
+.play-knapp {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #f5d800;
+  color: #1e8c2f;
+  border: none;
+  border-radius: 40px;
+  font-size: 22px;
+  font-weight: 900;
+  padding: 16px 48px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 #c4a800;
+}
+
+.play-knapp:hover {
+  background: #ffffff;
+}
