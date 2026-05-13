@@ -6,6 +6,23 @@
   <title>SNAKE — Spelet</title>
   <link rel="stylesheet" href="style.css">
 </head>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+
+  socket.on('starta_spel', () => {
+    startaSpel();
+  });
+
+  socket.on('fullt', () => {
+    alert('Spelet är fullt, försök igen senare!');
+  });
+
+  socket.on('spelare_borta', () => {
+    alert('Den andra spelaren kopplade från!');
+  });
+</script>
 <body>
 
  <img src="Start_skärmen!.png" height="500"  style="float: left; margin-right: 250px;">>
